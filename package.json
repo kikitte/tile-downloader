@@ -1,0 +1,23 @@
+{
+  "name": "download-tiles",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "data-uri-to-buffer": "^4.0.0",
+    "fetch-blob": "^3.1.3",
+    "formdata-polyfill": "^4.0.10",
+    "mime": "^3.0.0",
+    "node-fetch": "^3.1.0",
+    "tile-cover": "git://github.com/kikitte/tile-cover",
+    "web-streams-polyfill": "^3.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
