@@ -11,9 +11,10 @@ export default class Downloader {
    * @param {String[]} options.tiles
    * @param {String} options.urlTemplate
    * @param {Number} options.maxTaskNumber
+   * @param {Number} options.maxRetryCount
    * @param {Number} options.taskTimeout the maximum waiting time in milliseconds for the completion of a task
    * @param {(t: import('./tile-helper').TileCoordinate, contentType: String) => String} options.resolveTilePath
-   * @param {Number} options.onDownloadCompeleted
+   * @param {(unavailableTiles: import("./tile-helper.js").TileCoordinate[]) => void} options.onDownloadCompeleted
    */
   constructor(options) {
     this.tilesTotal = options.tiles.length;
@@ -22,6 +23,7 @@ export default class Downloader {
     this.urlTemplate = options.urlTemplate;
     this.resolveTilePath = options.resolveTilePath;
     this.onDownloadCompeleted = options.onDownloadCompeleted;
+    this.maxRetryCount = options.maxRetryCount;
 
     this.onTileTaskCancel = this.onTileTaskCancel.bind(this);
     this.onTileTaskCompelete = this.onTileTaskCompelete.bind(this);
@@ -39,6 +41,8 @@ export default class Downloader {
     });
 
     this.tileContentTypeMap = {};
+    this.tileTaskRetryCount = {};
+    this.unavailableTiles = [];
   }
 
   start() {
@@ -67,7 +71,7 @@ export default class Downloader {
       const contentType = val.headers.get("content-type");
       if (this.tileMIME != contentType) {
         // DEBUG
-        console.log(`content error: ${tile}`);
+        console.log(`\tcontent error: ${tile}`);
 
         throw Error("Content Error!");
       }
@@ -103,29 +107,68 @@ export default class Downloader {
     }
   }
 
+  getTileTaskRetryCount(tile) {
+    if (!(tile in this.tileTaskRetryCount)) {
+      return 0;
+    }
+    return this.tileTaskRetryCount[tile];
+  }
+
+  increaseTileTaskRetryCount(tile) {
+    if (!(tile in this.tileTaskRetryCount)) {
+      this.tileTaskRetryCount[tile] = 1;
+    } else {
+      ++this.tileTaskRetryCount[tile];
+    }
+  }
+
   onTileTaskCompelete(tile, content) {
     // save tile
     const success = this.saveTile(tile, content);
     // new tile task
     if (success) {
       this.removeTile(tile);
+    } else {
+      this.decreaseTilePriority(tile);
     }
+
     this.nextTileTask();
 
     delete this.tileContentTypeMap[tile];
   }
 
   onTileTaskCancel(tile) {
-    // DEBUG
-    console.log(`onTileTaskCancel: ${tile}`);
+    this.increaseTileTaskRetryCount(tile);
+    const tileRetryCount = this.getTileTaskRetryCount(tile);
 
-    // if failed to download the tile, we will reduce the priority of this tile
-    const tileIndex = this.tiles.indexOf(tile);
-    this.tiles[tileIndex] = this.tiles[this.tiles.length - 1];
-    this.tiles[this.tiles.length - 1] = tile;
+    // DEBUG
+    console.log(`\tonTileTaskCancel: ${tile}, retry count: ${tileRetryCount}`);
+
+    if (tileRetryCount > this.maxRetryCount) {
+      this.removeTile(tile);
+      this.unavailableTiles.push(tile);
+      delete this.tileTaskRetryCount[tile];
+      delete this.tileContentTypeMap[tile];
+    } else {
+      this.decreaseTilePriority(tile);
+      delete this.tileContentTypeMap[tile];
+    }
 
     this.nextTileTask();
-    delete this.tileContentTypeMap[tile];
+  }
+
+  decreaseTilePriority(tile) {
+    // if failed to download the tile,
+    // we will reduce the priority of this tile,
+    // that is making this tile to be download at the end
+
+    const tileIndex = this.tiles.indexOf(tile);
+    const randTileIndex = Math.floor(
+      [Math.random() / 2 + 0.5] * this.tiles.length
+    );
+
+    this.tiles[tileIndex] = this.tiles[randTileIndex];
+    this.tiles[randTileIndex] = tile;
   }
 
   fillUrlTemplate(tile) {
@@ -141,14 +184,16 @@ export default class Downloader {
       (1 - this.tiles.length / this.tilesTotal) *
       100
     ).toFixed(2)}%, total tiles: ${this.tilesTotal}, compeleted tiles: ${
-      this.tilesTotal - this.tiles.length
-    }, rest tiles: ${this.tiles.length}`;
+      this.tilesTotal - this.tiles.length - this.unavailableTiles.length
+    }, rest tiles: ${this.tiles.length}, unavailable tiles: ${
+      this.unavailableTiles.length
+    }`;
     console.log(tilesInfo);
 
     if (this.tiles.length === 0 && this.taskList.taskIsEmpty) {
       clearInterval(this.watchDownloadStatusTimer);
       this.taskList.stopWorking();
-      this.onDownloadCompeleted();
+      this.onDownloadCompeleted(this.unavailableTiles);
     }
   }
 }

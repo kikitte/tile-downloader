@@ -35,7 +35,13 @@ function downloadTilesAtLevel(level, saveTileGeoJSON = false) {
       resolveTilePath: (tile, contentType) =>
         workspace.resolvePath(tile, contentType),
       taskTimeout: 5000,
-      onDownloadCompeleted: () => {
+      maxRetryCount: 4,
+      onDownloadCompeleted: (unavailableTiles) => {
+        fs.writeFileSync(
+          `${workspace.workspace}/unavailable-tiles-${level}.geojson`,
+          unavailableTiles.join("\n")
+        );
+
         resolve();
       },
     });
@@ -45,7 +51,7 @@ function downloadTilesAtLevel(level, saveTileGeoJSON = false) {
 }
 
 (async function () {
-  for (let l = 12; l < 17; ++l) {
+  for (let l = 5; l < 6; ++l) {
     console.log(`download tiles at level ${l}`);
     await downloadTilesAtLevel(l, false);
   }
