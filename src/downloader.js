@@ -18,7 +18,7 @@ export default class Downloader {
    */
   constructor(options) {
     this.tilesTotal = options.tiles.length;
-    this.tileMIME = options.tileMIME;
+    this.tileMIME = options.tileMIME.toLowerCase();
     this.tiles = options.tiles;
     this.urlTemplate = options.urlTemplate;
     this.requestHeaders = options.requestHeaders;
@@ -69,13 +69,16 @@ export default class Downloader {
   fetchTile(tile) {
     const url = this.fillUrlTemplate(tile);
     return fetch(url, { headers: this.requestHeaders }).then((val) => {
-      const contentType = val.headers.get("content-type");
-      if (this.tileMIME != contentType) {
+      let contentType = val.headers.get("content-type");
+      if (!contentType) {
+        throw Error("Content-Type is required for response headers");
+      }
+      contentType = contentType.toLowerCase();
+      if (!contentType.includes(this.tileMIME)) {
         throw Error(
           `Content Error! expected=${this.tileMIME}, actual=${contentType}`
         );
       }
-      // header name is case insensitive
       this.tileContentTypeMap[tile] = contentType;
 
       return val.arrayBuffer();

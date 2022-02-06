@@ -25,8 +25,21 @@
 在使用之前你需要对以下概念有些许了解，才能更好的利用这个项目。
 
 1. 瓦片编号方案（tile scheme）
+
 2. GeoJSON Polygon
+
 3. MIME类型
+
+   在框架里，MIME类型用于判断瓦片请求返回是否成功和自动推断需要保存的文件的拓展名，此功能以来MIME包。对于不常见的拓展名需要在代码里定义MIME类型和其对应的拓展名。如下：
+
+   ```javascript
+   import MIME from "mime";
+   // application/vnd.quantized-mesh为Cesium 地形瓦片(quantized-mesh)的MIME类型，terrain为其文件拓展名
+   MIME.define({ "application/vnd.quantized-mesh": ["terrain"] });
+   // ...
+   ```
+
+   
 
 不妨花点时间了解一下然后再开始。
 
