@@ -1,4 +1,5 @@
 import fs from "fs";
+import { idToTileCoord } from "./tile-helper.js";
 
 export default class TileWrokspace {
   /**
@@ -6,11 +7,9 @@ export default class TileWrokspace {
    * @param {String} workspace
    */
   constructor(workspace) {
-    this.workspace = workspace
+    this.workspace = workspace;
     this.dirExistingMap = {};
   }
-
-  checkDirectory;
 
   /**
    *
@@ -26,9 +25,27 @@ export default class TileWrokspace {
   checkDirectoryExisting(tile) {
     const subdir = this.getRelativeDirectory(tile);
     if (!(subdir in this.dirExistingMap)) {
-      this.dirExistingMap[subdir] = fs.existsSync(this.getAbsoluteDirectory(tile));
+      this.dirExistingMap[subdir] = fs.existsSync(
+        this.getAbsoluteDirectory(tile)
+      );
     }
     return this.dirExistingMap[subdir];
+  }
+
+  /**
+   *
+   * @param {String} tile
+   * @param {ArrayBuffer} content
+   */
+  saveTile(tile, content, contentType) {
+    if (content) {
+      const tileCoord = idToTileCoord(tile);
+      const filePath = this.resolvePath(tileCoord, contentType);
+      fs.writeFile(filePath, new Uint8Array(content), {}, emptyCallback);
+
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -63,3 +80,5 @@ export default class TileWrokspace {
     throw Error("This is a virtual function!");
   }
 }
+
+function emptyCallback() {}

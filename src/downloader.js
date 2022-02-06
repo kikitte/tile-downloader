@@ -1,7 +1,6 @@
-import fs from "fs";
 import fetch from "node-fetch";
 import TaskList from "./tasklist.js";
-import * as TileHelpers from "./tile-helper.js";
+import { idToTileCoord } from "./tile-helper.js";
 
 export default class Downloader {
   /**
@@ -10,10 +9,11 @@ export default class Downloader {
    * @param {String} options.tileMIME
    * @param {String[]} options.tiles
    * @param {String} options.urlTemplate
+   * @param {{[index: String]: String}} options.requestHeaders
    * @param {Number} options.maxTaskNumber
    * @param {Number} options.maxRetryCount
    * @param {Number} options.taskTimeout the maximum waiting time in milliseconds for the completion of a task
-   * @param {(t: import('./tile-helper').TileCoordinate, contentType: String) => String} options.resolveTilePath
+   * @param {import('./tileworkspace').default} options.workspace
    * @param {(unavailableTiles: import("./tile-helper.js").TileCoordinate[]) => void} options.onDownloadCompeleted
    */
   constructor(options) {
@@ -21,7 +21,8 @@ export default class Downloader {
     this.tileMIME = options.tileMIME;
     this.tiles = options.tiles;
     this.urlTemplate = options.urlTemplate;
-    this.resolveTilePath = options.resolveTilePath;
+    this.requestHeaders = options.requestHeaders;
+    this.workspace = options.workspace;
     this.onDownloadCompeleted = options.onDownloadCompeleted;
     this.maxRetryCount = options.maxRetryCount;
 
@@ -67,38 +68,16 @@ export default class Downloader {
 
   fetchTile(tile) {
     const url = this.fillUrlTemplate(tile);
-    return fetch(url).then((val) => {
+    return fetch(url, { headers: this.requestHeaders }).then((val) => {
       const contentType = val.headers.get("content-type");
       if (this.tileMIME != contentType) {
-        // DEBUG
-        console.log(`\tcontent error: ${tile}`);
-
-        throw Error("Content Error!");
+        throw Error(`Content Error! expected=${this.tileMIME}, actual=${contentType}`);
       }
       // header name is case insensitive
       this.tileContentTypeMap[tile] = contentType;
 
       return val.arrayBuffer();
     });
-  }
-
-  /**
-   *
-   * @param {String} tile
-   * @param {ArrayBuffer} content
-   */
-  saveTile(tile, content) {
-    if (content) {
-      const tileCoord = TileHelpers.idToTileCoord(tile);
-      const filePath = this.resolveTilePath(
-        tileCoord,
-        this.tileContentTypeMap[tile]
-      );
-      fs.writeFileSync(filePath, new Uint8Array(content));
-
-      return true;
-    }
-    return false;
   }
 
   removeTile(tile) {
@@ -124,7 +103,11 @@ export default class Downloader {
 
   onTileTaskCompelete(tile, content) {
     // save tile
-    const success = this.saveTile(tile, content);
+    const success = this.workspace.saveTile(
+      tile,
+      content,
+      this.tileContentTypeMap[tile]
+    );
     // new tile task
     if (success) {
       this.removeTile(tile);
@@ -172,7 +155,7 @@ export default class Downloader {
   }
 
   fillUrlTemplate(tile) {
-    const tileCoord = TileHelpers.idToTileCoord(tile);
+    const tileCoord = idToTileCoord(tile);
     return this.urlTemplate
       .replace("{x}", tileCoord[0])
       .replace("{y}", tileCoord[1])

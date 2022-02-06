@@ -13,7 +13,11 @@
     "tile-cover": "git://github.com/kikitte/tile-cover",
     "web-streams-polyfill": "^3.2.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@types/geojson": "^7946.0.8",
+    "eslint": "^8.8.0",
+    "eslint-config-prettier": "^8.3.0"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

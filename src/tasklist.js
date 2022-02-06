@@ -53,7 +53,8 @@ export default class TaskList {
     const onThenableNext = function () {
       that.onTaskCompeleted(id, arguments);
     };
-    const onThenableError = function () {
+    const onThenableError = function (error) {
+      console.log(error)
       that.onTaskError(id, arguments);
     };
     thenable.then(onThenableNext).catch(onThenableError);
