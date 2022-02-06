@@ -53,7 +53,7 @@ cd tile-downloader
 # 安装依赖
 npm install
 # 
-node examples/download.js # 通过修改download.js来实现具体下载需求
+node examples/download-google-satellite.js # 通过修改download.js来实现具体下载需求
 ```
 
 
