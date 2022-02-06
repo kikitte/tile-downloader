@@ -71,7 +71,9 @@ export default class Downloader {
     return fetch(url, { headers: this.requestHeaders }).then((val) => {
       const contentType = val.headers.get("content-type");
       if (this.tileMIME != contentType) {
-        throw Error(`Content Error! expected=${this.tileMIME}, actual=${contentType}`);
+        throw Error(
+          `Content Error! expected=${this.tileMIME}, actual=${contentType}`
+        );
       }
       // header name is case insensitive
       this.tileContentTypeMap[tile] = contentType;
@@ -123,9 +125,6 @@ export default class Downloader {
   onTileTaskCancel(tile) {
     this.increaseTileTaskRetryCount(tile);
     const tileRetryCount = this.getTileTaskRetryCount(tile);
-
-    // DEBUG
-    console.log(`\tonTileTaskCancel: ${tile}, retry count: ${tileRetryCount}`);
 
     if (tileRetryCount > this.maxRetryCount) {
       this.removeTile(tile);
